@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduDesk — College Teacher Dashboard
 
-## Getting Started
+A modern, full-stack teacher dashboard for managing students, attendance, assignments, grades, and announcements.
 
-First, run the development server:
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Auth**: Clerk v7
+- **Database**: MongoDB + Mongoose
+- **Styling**: Tailwind CSS v4
+- **Charts**: Recharts
+- **Forms**: React Hook Form + Zod
+
+## Setup
+
+### 1. Environment Variables
+
+Copy `.env.local.example` to `.env.local` and fill in your values:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.local.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+```env
+# Clerk — get from https://dashboard.clerk.com
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# MongoDB — get from https://cloud.mongodb.com
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.mongodb.net/college-dashboard
+```
 
-## Learn More
+### 2. Install & Run
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000) — it redirects to `/sign-in` automatically.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Features
 
-## Deploy on Vercel
+| Page | What you can do |
+|------|----------------|
+| **Dashboard** | Summary cards, attendance trend chart, grade distribution chart, recent activity |
+| **Students** | Add / edit / delete students, search + paginate |
+| **Attendance** | Bulk mark attendance by class & date, view history |
+| **Assignments** | Create / edit / delete assignments with deadlines, active/closed filter |
+| **Grades** | Record marks, auto-calculate letter grades, bar charts per subject |
+| **Announcements** | Post / pin / edit / delete announcements |
+| **Profile** | Edit name, department, subjects, bio synced with Clerk |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/
+  (auth)/sign-in, sign-up     # Clerk auth pages
+  dashboard/                  # Protected pages (layout wraps all)
+    page.tsx                  # Overview with charts
+    students/
+    attendance/
+    assignments/
+    grades/
+    announcements/
+    profile/
+  api/                        # Route handlers (REST)
+    students/[id]/
+    attendance/
+    assignments/[id]/
+    grades/[id]/
+    announcements/[id]/
+    profile/
+components/
+  dashboard/  Sidebar, Navbar, DashboardShell
+  ui/         Button, Modal, Badge, Toast, Skeleton
+lib/
+  mongodb.ts  Connection helper with global cache
+models/
+  Teacher, Student, Attendance, Assignment, Grade, Announcement
+```
+
+## Deployment (Vercel)
+
+1. Push to GitHub
+2. Import in [Vercel](https://vercel.com)
+3. Add all environment variables in the Vercel dashboard
+4. Deploy
