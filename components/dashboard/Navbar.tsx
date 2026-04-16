@@ -1,6 +1,5 @@
 'use client'
 
-import { UserButton } from '@clerk/nextjs'
 import { useState, useEffect } from 'react'
 
 interface NavbarProps {
@@ -39,7 +38,7 @@ export function Navbar({ onMenuClick, title }: NavbarProps) {
         <h1 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h1>
       </div>
 
-      {/* Right: Dark mode + User */}
+      {/* Right: Dark mode */}
       <div className="flex items-center gap-3">
         <button
           onClick={toggleDark}
@@ -56,7 +55,6 @@ export function Navbar({ onMenuClick, title }: NavbarProps) {
             </svg>
           )}
         </button>
-        <UserButton />
       </div>
     </header>
   )

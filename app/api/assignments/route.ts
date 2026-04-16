@@ -12,6 +12,7 @@ const AssignmentSchema = z.object({
   deadline: z.string().min(1),
   maxMarks: z.number().min(1).optional(),
   status: z.enum(['active', 'closed']).optional(),
+  kanbanStatus: z.enum(['todo', 'in_progress', 'submitted']).optional(),
 })
 
 export async function GET(req: NextRequest) {

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useUser, UserButton } from '@clerk/nextjs'
 
 const navItems = [
   {
@@ -75,6 +76,7 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname() ?? ''
+  const { user } = useUser()
 
   return (
     <aside className="flex h-full flex-col bg-indigo-950 text-indigo-100">
@@ -114,9 +116,19 @@ export function Sidebar({ onClose }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
+      {/* User Profile */}
       <div className="border-t border-indigo-900 px-4 py-4">
-        <p className="text-xs text-indigo-500 text-center">© 2026 EduDesk</p>
+        <div className="flex items-center gap-3">
+          <UserButton />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white leading-tight">
+              {user?.fullName ?? user?.firstName ?? '—'}
+            </p>
+            <p className="truncate text-xs text-indigo-400">
+              {user?.primaryEmailAddress?.emailAddress ?? ''}
+            </p>
+          </div>
+        </div>
       </div>
     </aside>
   )

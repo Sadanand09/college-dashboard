@@ -1,5 +1,11 @@
 import mongoose, { Schema, model, models } from 'mongoose'
 
+export interface IAcademicHistoryEntry {
+  year: string
+  title: string
+  description?: string
+}
+
 export interface ITeacher {
   _id: mongoose.Types.ObjectId
   clerkId: string
@@ -9,6 +15,7 @@ export interface ITeacher {
   subjects: string[]
   phone?: string
   bio?: string
+  academicHistory: IAcademicHistoryEntry[]
   createdAt: Date
   updatedAt: Date
 }
@@ -22,6 +29,10 @@ const TeacherSchema = new Schema<ITeacher>(
     subjects: { type: [String], default: [] },
     phone: { type: String, default: '' },
     bio: { type: String, default: '' },
+    academicHistory: {
+      type: [{ year: String, title: String, description: String }],
+      default: [],
+    },
   },
   { timestamps: true }
 )

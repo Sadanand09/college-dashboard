@@ -22,10 +22,22 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const date = searchParams.get('date')
   const cls = searchParams.get('class')
+  const studentId = searchParams.get('studentId')
+
+  const startDate = searchParams.get('startDate')
+  const endDate = searchParams.get('endDate')
 
   const query: Record<string, unknown> = { teacherId: userId }
-  if (date) query.date = date
+  if (date) {
+    query.date = date
+  } else if (startDate || endDate) {
+    const dateRange: Record<string, string> = {}
+    if (startDate) dateRange.$gte = startDate
+    if (endDate) dateRange.$lte = endDate
+    query.date = dateRange
+  }
   if (cls) query.class = cls
+  if (studentId) query.studentId = studentId
 
   const records = await Attendance.find(query).sort({ date: -1, studentName: 1 }).lean()
   return NextResponse.json(records)

@@ -9,6 +9,7 @@ export interface IAssignment {
   class: string
   deadline: Date
   status: 'active' | 'closed'
+  kanbanStatus: 'todo' | 'in_progress' | 'submitted'
   maxMarks: number
   createdAt: Date
   updatedAt: Date
@@ -23,6 +24,7 @@ const AssignmentSchema = new Schema<IAssignment>(
     class: { type: String, required: true },
     deadline: { type: Date, required: true },
     status: { type: String, enum: ['active', 'closed'], default: 'active' },
+    kanbanStatus: { type: String, enum: ['todo', 'in_progress', 'submitted'], default: 'todo' },
     maxMarks: { type: Number, default: 100 },
   },
   { timestamps: true }
