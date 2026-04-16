@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
     if (error instanceof Error) {
       console.error('POST /api/students error:', error.message)
     }
+    if ((error as { code?: number }).code === 11000) {
+      return NextResponse.json({ error: 'A student with this roll number already exists' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

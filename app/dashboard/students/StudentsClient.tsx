@@ -83,8 +83,23 @@ export function StudentsClient() {
       setModalOpen(false)
       fetchStudents()
     } else {
-      const err = await res.json()
-      toast(err.error?.formErrors?.[0] ?? 'Something went wrong', 'error')
+      let msg = "Something went wrong";
+      try {
+        const err = await res.json();
+        if (typeof err.error === "string") {
+          msg = err.error;
+        } else if (err.error?.formErrors?.[0]) {
+          msg = err.error.formErrors[0];
+        } else if (err.error?.fieldErrors) {
+          const first = Object.values(
+            err.error.fieldErrors as Record<string, string[]>,
+          )[0];
+          if (first?.[0]) msg = first[0];
+        }
+      } catch {
+        msg = `Error: ${res.status} ${res.statusText || "Unknown error"}`;
+      }
+      toast(msg, "error");
     }
   }
 

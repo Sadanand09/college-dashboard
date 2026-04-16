@@ -45,6 +45,9 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     if (error instanceof Error) {
       console.error('PUT /api/students/[id] error:', error.message)
     }
+    if ((error as { code?: number }).code === 11000) {
+      return NextResponse.json({ error: 'A student with this roll number already exists' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
