@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Button } from '@/components/ui/Button'
@@ -52,27 +52,22 @@ export function GradesClient() {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Grade | null>(null)
-  const [subjectFilter, setSubjectFilter] = useState('')
+  const [activeTab, setActiveTab] = useState<string>('')
 
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<FormData>()
 
   const fetchGrades = useCallback(async () => {
     setLoading(true)
     try {
-      const params = subjectFilter ? `?subject=${encodeURIComponent(subjectFilter)}` : ''
-      const gradesRes = await fetch(`/api/grades${params}`)
+      const gradesRes = await fetch('/api/grades')
       const studentsRes = await fetch('/api/students?limit=200')
-      
-      if (!gradesRes.ok) {
-        throw new Error(`Failed to fetch grades: ${gradesRes.status}`)
-      }
-      if (!studentsRes.ok) {
-        throw new Error(`Failed to fetch students: ${studentsRes.status}`)
-      }
-      
+
+      if (!gradesRes.ok) throw new Error(`Failed to fetch grades: ${gradesRes.status}`)
+      if (!studentsRes.ok) throw new Error(`Failed to fetch students: ${studentsRes.status}`)
+
       const gradesData = await gradesRes.json()
       const studentsData = await studentsRes.json()
-      
+
       setGrades(Array.isArray(gradesData) ? gradesData : [])
       setStudents(studentsData.students ?? [])
     } catch (error) {
@@ -82,9 +77,28 @@ export function GradesClient() {
     } finally {
       setLoading(false)
     }
-  }, [subjectFilter])
+  }, [])
 
   useEffect(() => { fetchGrades() }, [fetchGrades])
+
+  // Derive sorted subjects and grouped grades
+  const { subjects, gradesBySubject } = useMemo(() => {
+    const map: Record<string, Grade[]> = {}
+    for (const g of grades) {
+      ;(map[g.subject] ??= []).push(g)
+    }
+    return {
+      subjects: Object.keys(map).sort((a, b) => a.localeCompare(b)),
+      gradesBySubject: map,
+    }
+  }, [grades])
+
+  // Keep activeTab in sync when subjects load
+  useEffect(() => {
+    if (subjects.length > 0 && !subjects.includes(activeTab)) {
+      setActiveTab(subjects[0])
+    }
+  }, [subjects, activeTab])
 
   const openAdd = () => {
     setEditing(null)
@@ -144,18 +158,18 @@ export function GradesClient() {
   })).filter((r) => r.count > 0)
 
   // Average per subject
-  const subjectAverages: Record<string, { total: number; count: number }> = {}
-  for (const g of grades) {
-    if (g.maxMarks > 0) {
-      if (!subjectAverages[g.subject]) subjectAverages[g.subject] = { total: 0, count: 0 }
-      subjectAverages[g.subject].total += (g.marks / g.maxMarks) * 100
-      subjectAverages[g.subject].count++
-    }
-  }
-  const subjectData = Object.entries(subjectAverages).map(([subject, v]) => ({
-    subject: subject.slice(0, 12),
-    avg: v.count > 0 ? Math.round(v.total / v.count) : 0,
-  }))
+  const subjectData = subjects.map((subject) => {
+    const sg = gradesBySubject[subject]
+    const avg = sg.length > 0
+      ? Math.round(sg.reduce((s, g) => s + (g.maxMarks > 0 ? (g.marks / g.maxMarks) * 100 : 0), 0) / sg.length)
+      : 0
+    return { subject: subject.slice(0, 12), avg }
+  })
+
+  const activeGrades = gradesBySubject[activeTab] ?? []
+  const activeAvg = activeGrades.length > 0
+    ? Math.round(activeGrades.reduce((s, g) => s + (g.maxMarks > 0 ? (g.marks / g.maxMarks) * 100 : 0), 0) / activeGrades.length)
+    : 0
 
   return (
     <div className="space-y-6">
@@ -189,16 +203,11 @@ export function GradesClient() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-          <input
-            type="text"
-            placeholder="Filter by subject…"
-            value={subjectFilter}
-            onChange={(e) => setSubjectFilter(e.target.value)}
-            className="input max-w-xs"
-          />
+      {/* Grades table with subject tabs */}
+      <div className="space-y-0 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200">Grades</h2>
           <Button onClick={openAdd}>
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -207,53 +216,87 @@ export function GradesClient() {
           </Button>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden">
-          {loading ? (
-            <div className="p-6"><TableSkeleton rows={6} /></div>
-          ) : grades.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-gray-400 text-sm">No grades recorded yet.</p>
-              <Button size="sm" className="mt-4" onClick={openAdd}>Add first grade</Button>
+        {loading ? (
+          <div className="p-6"><TableSkeleton rows={6} /></div>
+        ) : grades.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-gray-400 text-sm">No grades recorded yet.</p>
+            <Button size="sm" className="mt-4" onClick={openAdd}>Add first grade</Button>
+          </div>
+        ) : (
+          <>
+            {/* Tab bar */}
+            <div className="flex overflow-x-auto border-b border-gray-200 dark:border-slate-700 scrollbar-none">
+              {subjects.map((subject) => (
+                <button
+                  key={subject}
+                  onClick={() => setActiveTab(subject)}
+                  className={`shrink-0 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                    ${activeTab === subject
+                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                      : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:border-gray-300 dark:hover:border-slate-500'
+                    }`}
+                >
+                  {subject}
+                  <span className={`ml-2 text-xs rounded-full px-1.5 py-0.5
+                    ${activeTab === subject
+                      ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {gradesBySubject[subject].length}
+                  </span>
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 dark:bg-slate-900/50">
-                  <tr>
-                    {['Student', 'Subject', 'Marks', 'Grade', 'Term', 'Actions'].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                  {grades.map((g) => (
-                    <tr key={g._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{g.studentName}</td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-slate-300">{g.subject}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-semibold text-gray-900 dark:text-white">{g.marks}</span>
-                        <span className="text-gray-400">/{g.maxMarks}</span>
-                        <span className="ml-1 text-xs text-gray-400">({g.maxMarks > 0 ? Math.round((g.marks / g.maxMarks) * 100) : 'N/A'}%)</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={(GRADE_COLOR[g.grade] as 'success' | 'info' | 'warning' | 'danger') ?? 'default'}>
-                          {g.grade}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{g.term}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(g)}>Edit</Button>
-                          <Button size="sm" variant="danger" onClick={() => { if (confirm('Delete?')) deleteGrade(g._id) }}>Delete</Button>
-                        </div>
-                      </td>
+
+            {/* Tab content */}
+            <div>
+              {/* Subject stats bar */}
+              <div className="flex items-center gap-4 px-5 py-3 bg-gray-50 dark:bg-slate-900/30 border-b border-gray-100 dark:border-slate-700/50 text-xs text-gray-500 dark:text-slate-400">
+                <span>{activeGrades.length} record{activeGrades.length !== 1 ? 's' : ''}</span>
+                <span className="text-gray-300 dark:text-slate-600">|</span>
+                <span>Class avg: <span className="font-semibold text-gray-700 dark:text-slate-200">{activeAvg}%</span></span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-slate-900/50">
+                    <tr>
+                      {['Student', 'Marks', 'Grade', 'Term', 'Actions'].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                    {activeGrades.map((g) => (
+                      <tr key={g._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
+                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{g.studentName}</td>
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-gray-900 dark:text-white">{g.marks}</span>
+                          <span className="text-gray-400">/{g.maxMarks}</span>
+                          <span className="ml-1 text-xs text-gray-400">({g.maxMarks > 0 ? Math.round((g.marks / g.maxMarks) * 100) : 'N/A'}%)</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={(GRADE_COLOR[g.grade] as 'success' | 'info' | 'warning' | 'danger') ?? 'default'}>
+                            {g.grade}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{g.term}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(g)}>Edit</Button>
+                            <Button size="sm" variant="danger" onClick={() => { if (confirm('Delete?')) deleteGrade(g._id) }}>Delete</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Modal */}
