@@ -102,14 +102,14 @@ function AttendanceRing({ pct, present, absent, late }: { pct: number; present: 
   return (
     <div className="flex flex-col items-center">
       <div className="relative">
-        <ResponsiveContainer width={180} height={180}>
+        <ResponsiveContainer width={280} height={280}>
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={55}
-              outerRadius={80}
+              innerRadius={85}
+              outerRadius={120}
               paddingAngle={2}
               dataKey="value"
               startAngle={90}
@@ -128,25 +128,25 @@ function AttendanceRing({ pct, present, absent, late }: { pct: number; present: 
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+          <span className="text-3xl font-bold text-gray-900 dark:text-white">
             {pct}%
           </span>
-          <span className="text-xs text-gray-500 dark:text-slate-400">
+          <span className="text-sm text-gray-500 dark:text-slate-400">
             Present
           </span>
         </div>
       </div>
-      <div className="flex gap-4 mt-2 text-xs">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+      <div className="flex gap-6 mt-4 text-sm">
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-emerald-500" />
           Present {present}
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-red-500" />
           Absent {absent}
         </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-amber-500" />
           Late {late}
         </span>
       </div>
@@ -594,14 +594,14 @@ export function OverviewClient() {
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      {/* Charts column */}
+      <div className="flex flex-col gap-6">
         {/* Attendance Ring */}
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 flex flex-col">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8 flex flex-col">
+          <h2 className="text-base font-semibold text-gray-700 dark:text-slate-200 mb-6">
             Attendance Breakdown
           </h2>
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center justify-center py-4">
             <AttendanceRing
               pct={stats.attendancePct}
               present={stats.attendanceBreakdown.present}
@@ -612,59 +612,59 @@ export function OverviewClient() {
         </div>
 
         {/* Attendance Trend */}
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8">
+          <h2 className="text-base font-semibold text-gray-700 dark:text-slate-200 mb-6">
             Attendance Trend (last 7 days)
           </h2>
           {stats.attendanceTrend.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={320}>
               <LineChart data={stats.attendanceTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
+                <XAxis dataKey="date" tick={{ fontSize: 13 }} />
+                <YAxis tick={{ fontSize: 13 }} />
                 <Tooltip />
                 <Legend />
                 <Line
                   type="monotone"
                   dataKey="present"
                   stroke="#10b981"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   dot={false}
                 />
                 <Line
                   type="monotone"
                   dataKey="absent"
                   stroke="#ef4444"
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-14">
+            <p className="text-sm text-gray-400 text-center py-20">
               No attendance data yet.
             </p>
           )}
         </div>
 
         {/* CGPA Trend */}
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-8">
+          <h2 className="text-base font-semibold text-gray-700 dark:text-slate-200 mb-6">
             CGPA Trend by Term
           </h2>
           {stats.cgpaTrend.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={320}>
               <LineChart data={stats.cgpaTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="term" tick={{ fontSize: 10 }} />
-                <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
+                <XAxis dataKey="term" tick={{ fontSize: 13 }} />
+                <YAxis domain={[0, 10]} tick={{ fontSize: 13 }} />
                 <Tooltip formatter={(v) => [v, "CGPA"]} />
                 <Line
                   type="monotone"
                   dataKey="cgpa"
                   stroke="#6366f1"
-                  strokeWidth={2}
-                  dot={{ r: 4, fill: "#6366f1" }}
+                  strokeWidth={2.5}
+                  dot={{ r: 5, fill: "#6366f1" }}
                 />
               </LineChart>
             </ResponsiveContainer>
