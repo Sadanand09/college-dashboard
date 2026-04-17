@@ -24,38 +24,52 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    await connectDB()
-    const { searchParams } = new URL(req.url)
-    const search = searchParams.get('search') ?? ''
-    
-    // Parse and validate pagination
-    const pageStr = searchParams.get('page') ?? '1'
-    const limitStr = searchParams.get('limit') ?? '20'
-    
-    let page = parseInt(pageStr, 10)
-    let limit = parseInt(limitStr, 10)
-    
-    if (Number.isNaN(page) || page < 1) page = 1
-    if (Number.isNaN(limit) || limit < 1) limit = 20
-    limit = Math.min(limit, 100) // Cap at 100
+    await connectDB();
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search") ?? "";
+    const classFilter = searchParams.get("class") ?? "";
 
-    const query: Record<string, unknown> = { teacherId: userId }
+    // Parse and validate pagination
+    const pageStr = searchParams.get("page") ?? "1";
+    const limitStr = searchParams.get("limit") ?? "20";
+
+    let page = parseInt(pageStr, 10);
+    let limit = parseInt(limitStr, 10);
+
+    if (Number.isNaN(page) || page < 1) page = 1;
+    if (Number.isNaN(limit) || limit < 1) limit = 20;
+    limit = Math.min(limit, 100); // Cap at 100
+
+    const query: Record<string, unknown> = { teacherId: userId };
     if (search) {
       // Escape regex special characters to prevent ReDoS
-      const escapedSearch = escapeRegex(search)
+      const escapedSearch = escapeRegex(search);
       query.$or = [
-        { name: { $regex: escapedSearch, $options: 'i' } },
-        { rollNo: { $regex: escapedSearch, $options: 'i' } },
-        { class: { $regex: escapedSearch, $options: 'i' } },
-      ]
+        { name: { $regex: escapedSearch, $options: "i" } },
+        { rollNo: { $regex: escapedSearch, $options: "i" } },
+        { class: { $regex: escapedSearch, $options: "i" } },
+      ];
+    }
+    // Add class filter if provided and not 'all'
+    if (classFilter && classFilter !== "all") {
+      query.class = classFilter;
     }
 
     const [students, total] = await Promise.all([
-      Student.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Student.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
       Student.countDocuments(query),
-    ])
+    ]);
 
-    return NextResponse.json({ students, total, page, pages: Math.ceil(total / limit) })
+    return NextResponse.json({
+      students,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     if (error instanceof Error) {
       console.error('GET /api/students error:', error.message)
@@ -74,7 +88,7 @@ export async function POST(req: NextRequest) {
     let body
     try {
       body = await req.json()
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 })
     }
     

@@ -16,23 +16,28 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await connectDB()
-  const { searchParams } = new URL(req.url)
-  
-  // Parse and validate limit
-  const limitStr = searchParams.get('limit') ?? '50'
-  let limit = parseInt(limitStr, 10)
-  if (!Number.isFinite(limit) || limit <= 0) {
-    limit = 50
+  try {
+    await connectDB()
+    const { searchParams } = new URL(req.url)
+
+    // Parse and validate limit
+    const limitStr = searchParams.get('limit') ?? '50'
+    let limit = parseInt(limitStr, 10)
+    if (!Number.isFinite(limit) || limit <= 0) {
+      limit = 50
+    }
+    limit = Math.min(limit, 100) // Cap at 100
+
+    const announcements = await Announcement.find({ teacherId: userId })
+      .sort({ pinned: -1, createdAt: -1 })
+      .limit(limit)
+      .lean()
+
+    return NextResponse.json(announcements)
+  } catch (error) {
+    console.error('GET /api/announcements error:', error instanceof Error ? error.message : error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-  limit = Math.min(limit, 100) // Cap at 100
-
-  const announcements = await Announcement.find({ teacherId: userId })
-    .sort({ pinned: -1, createdAt: -1 })
-    .limit(limit)
-    .lean()
-
-  return NextResponse.json(announcements)
 }
 
 export async function POST(req: NextRequest) {
@@ -44,7 +49,7 @@ export async function POST(req: NextRequest) {
     let body
     try {
       body = await req.json()
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
     

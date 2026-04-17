@@ -2,6 +2,7 @@
  * Seed script for college-dashboard MongoDB database.
  *
  * Usage:
+ *   npm run seed
  *   node scripts/seed.mjs
  *
  * The script reads MONGODB_URI from .env.local automatically.
@@ -30,7 +31,6 @@ try {
     if (eqIdx === -1) continue
     const key = trimmed.slice(0, eqIdx).trim()
     let val = trimmed.slice(eqIdx + 1).trim()
-    // Strip matching surrounding quotes and unescape common escapes
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1)
     }
@@ -48,7 +48,7 @@ if (!MONGODB_URI) {
 }
 
 // ── Schemas (mirror the TypeScript models exactly) ─────────────────────────────
-const { Schema, model, models, Types } = mongoose
+const { Schema, model, models } = mongoose
 
 const TeacherSchema = new Schema(
   {
@@ -59,6 +59,16 @@ const TeacherSchema = new Schema(
     subjects: { type: [String], default: [] },
     phone: { type: String, default: '' },
     bio: { type: String, default: '' },
+    academicHistory: {
+      type: [
+        {
+          year: { type: String, required: true },
+          title: { type: String, required: true },
+          description: { type: String },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 )
@@ -92,7 +102,7 @@ const AttendanceSchema = new Schema(
   },
   { timestamps: true }
 )
-AttendanceSchema.index({ teacherId: 1, studentId: 1, date: 1 }, { unique: true })
+AttendanceSchema.index({ studentId: 1, date: 1 }, { unique: true })
 const Attendance = models.Attendance ?? model('Attendance', AttendanceSchema)
 
 const AssignmentSchema = new Schema(
@@ -102,8 +112,9 @@ const AssignmentSchema = new Schema(
     description: { type: String, default: '' },
     subject: { type: String, required: true },
     class: { type: String, required: true },
-    deadline: { type: String, required: true },
+    deadline: { type: Date, required: true },
     status: { type: String, enum: ['active', 'closed'], default: 'active' },
+    kanbanStatus: { type: String, enum: ['todo', 'in_progress', 'submitted'], default: 'todo' },
     maxMarks: { type: Number, default: 100 },
   },
   { timestamps: true }
@@ -132,6 +143,7 @@ const AnnouncementSchema = new Schema(
     title: { type: String, required: true },
     content: { type: String, required: true },
     audience: { type: String, default: 'All' },
+    category: { type: String, enum: ['academic', 'events', 'admin', 'general'], default: 'general' },
     pinned: { type: Boolean, default: false },
   },
   { timestamps: true }
@@ -150,57 +162,79 @@ function gradeFromMarks(marks, max = 100) {
   return 'F'
 }
 
-function dateStr(daysFromToday) {
+function dateOffset(daysFromToday) {
   const d = new Date()
   d.setDate(d.getDate() + daysFromToday)
-  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+  return d
+}
+
+function dateStr(daysFromToday) {
+  return dateOffset(daysFromToday).toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
 // ── Seed data definitions ──────────────────────────────────────────────────────
-const STUDENTS_DATA = [
-  { name: 'Aarav Sharma',    rollNo: 'CS001', class: 'CS-A', email: 'aarav@example.com',    phone: '9876543210', parentName: 'Rajesh Sharma',    parentPhone: '9876543200' },
-  { name: 'Priya Patel',     rollNo: 'CS002', class: 'CS-A', email: 'priya@example.com',    phone: '9876543211', parentName: 'Suresh Patel',      parentPhone: '9876543201' },
-  { name: 'Rohan Mehta',     rollNo: 'CS003', class: 'CS-A', email: 'rohan@example.com',    phone: '9876543212', parentName: 'Vikram Mehta',      parentPhone: '9876543202' },
-  { name: 'Ananya Gupta',    rollNo: 'CS004', class: 'CS-A', email: 'ananya@example.com',   phone: '9876543213', parentName: 'Dinesh Gupta',      parentPhone: '9876543203' },
-  { name: 'Karthik Reddy',   rollNo: 'CS005', class: 'CS-A', email: 'karthik@example.com',  phone: '9876543214', parentName: 'Venkat Reddy',      parentPhone: '9876543204' },
-  { name: 'Divya Nair',      rollNo: 'CS006', class: 'CS-B', email: 'divya@example.com',    phone: '9876543215', parentName: 'Mohan Nair',        parentPhone: '9876543205' },
-  { name: 'Arjun Singh',     rollNo: 'CS007', class: 'CS-B', email: 'arjun@example.com',    phone: '9876543216', parentName: 'Balveer Singh',     parentPhone: '9876543206' },
-  { name: 'Sneha Iyer',      rollNo: 'CS008', class: 'CS-B', email: 'sneha@example.com',    phone: '9876543217', parentName: 'Ramesh Iyer',       parentPhone: '9876543207' },
-  { name: 'Rahul Joshi',     rollNo: 'CS009', class: 'CS-B', email: 'rahul@example.com',    phone: '9876543218', parentName: 'Prakash Joshi',     parentPhone: '9876543208' },
-  { name: 'Pooja Agarwal',   rollNo: 'CS010', class: 'CS-B', email: 'pooja@example.com',    phone: '9876543219', parentName: 'Anil Agarwal',      parentPhone: '9876543209' },
-]
-
 const SUBJECTS = ['Mathematics', 'Data Structures', 'Operating Systems', 'DBMS', 'Computer Networks']
 
-const ASSIGNMENTS_DATA = [
-  { title: 'Binary Tree Traversal',       subject: 'Data Structures',    class: 'CS-A', description: 'Implement in-order, pre-order, and post-order traversals.', deadline: dateStr(7),  status: 'active', maxMarks: 50  },
-  { title: 'Calculus Problem Set 3',      subject: 'Mathematics',         class: 'CS-A', description: 'Solve integration and differentiation problems (Ch. 5–6).',  deadline: dateStr(5),  status: 'active', maxMarks: 100 },
-  { title: 'Process Scheduling Report',   subject: 'Operating Systems',   class: 'CS-B', description: 'Compare FCFS, SJF, and Round Robin algorithms.',             deadline: dateStr(10), status: 'active', maxMarks: 50  },
-  { title: 'ER Diagram – Library System', subject: 'DBMS',                class: 'CS-B', description: 'Design ER diagram and convert to relational schema.',        deadline: dateStr(-2), status: 'closed', maxMarks: 30  },
-  { title: 'Socket Programming Lab',      subject: 'Computer Networks',   class: 'CS-A', description: 'Implement a TCP echo server and client in C.',               deadline: dateStr(14), status: 'active', maxMarks: 50  },
-  { title: 'Sorting Algorithm Analysis',  subject: 'Data Structures',    class: 'CS-B', description: 'Analyse time and space complexity of 5 sorting algorithms.',  deadline: dateStr(-5), status: 'closed', maxMarks: 100 },
+const TEACHER_PROFILE = {
+  department: 'Computer Science',
+  subjects: SUBJECTS,
+  phone: '9800000001',
+  bio: 'Assistant Professor with 8 years of experience in Computer Science education, specialising in algorithms and database systems.',
+  academicHistory: [
+    { year: '2016', title: 'Joined as Lecturer', description: 'Started teaching undergraduate CS courses at City College.' },
+    { year: '2018', title: 'Promoted to Assistant Professor', description: 'Received promotion after completing M.Tech and publishing two research papers.' },
+    { year: '2020', title: 'Best Teacher Award', description: 'Awarded Best Teacher of the Year by the faculty board.' },
+    { year: '2023', title: 'PhD Enrolled', description: 'Enrolled in PhD programme focusing on distributed database systems.' },
+  ],
+}
+
+const STUDENTS_DATA = [
+  { name: 'Aarav Sharma',  rollNo: 'CS001', class: 'CS-A', email: 'aarav@example.com',   phone: '9876543210', address: '12 MG Road, Mumbai',        parentName: 'Rajesh Sharma',  parentPhone: '9876543200' },
+  { name: 'Priya Patel',   rollNo: 'CS002', class: 'CS-A', email: 'priya@example.com',   phone: '9876543211', address: '45 Park Street, Pune',       parentName: 'Suresh Patel',   parentPhone: '9876543201' },
+  { name: 'Rohan Mehta',   rollNo: 'CS003', class: 'CS-A', email: 'rohan@example.com',   phone: '9876543212', address: '7 Hill View, Nashik',         parentName: 'Vikram Mehta',   parentPhone: '9876543202' },
+  { name: 'Ananya Gupta',  rollNo: 'CS004', class: 'CS-A', email: 'ananya@example.com',  phone: '9876543213', address: '88 Gandhi Nagar, Nagpur',     parentName: 'Dinesh Gupta',   parentPhone: '9876543203' },
+  { name: 'Karthik Reddy', rollNo: 'CS005', class: 'CS-A', email: 'karthik@example.com', phone: '9876543214', address: '3 Jubilee Hills, Hyderabad',  parentName: 'Venkat Reddy',   parentPhone: '9876543204' },
+  { name: 'Divya Nair',    rollNo: 'CS006', class: 'CS-B', email: 'divya@example.com',   phone: '9876543215', address: '21 Koramangala, Bangalore',   parentName: 'Mohan Nair',     parentPhone: '9876543205' },
+  { name: 'Arjun Singh',   rollNo: 'CS007', class: 'CS-B', email: 'arjun@example.com',   phone: '9876543216', address: '56 Sector 15, Chandigarh',    parentName: 'Balveer Singh',  parentPhone: '9876543206' },
+  { name: 'Sneha Iyer',    rollNo: 'CS008', class: 'CS-B', email: 'sneha@example.com',   phone: '9876543217', address: '9 T Nagar, Chennai',          parentName: 'Ramesh Iyer',    parentPhone: '9876543207' },
+  { name: 'Rahul Joshi',   rollNo: 'CS009', class: 'CS-B', email: 'rahul@example.com',   phone: '9876543218', address: '33 Civil Lines, Jaipur',      parentName: 'Prakash Joshi',  parentPhone: '9876543208' },
+  { name: 'Pooja Agarwal', rollNo: 'CS010', class: 'CS-B', email: 'pooja@example.com',   phone: '9876543219', address: '77 Salt Lake, Kolkata',       parentName: 'Anil Agarwal',   parentPhone: '9876543209' },
 ]
 
+// Assignments covering all statuses and kanbanStatuses
+const ASSIGNMENTS_DATA = [
+  { title: 'Binary Tree Traversal',       subject: 'Data Structures',   class: 'CS-A', description: 'Implement in-order, pre-order, and post-order traversals.',  deadline: dateOffset(7),  status: 'active', kanbanStatus: 'todo',        maxMarks: 50  },
+  { title: 'Calculus Problem Set 3',      subject: 'Mathematics',        class: 'CS-A', description: 'Solve integration and differentiation problems (Ch. 5–6).',   deadline: dateOffset(5),  status: 'active', kanbanStatus: 'in_progress', maxMarks: 100 },
+  { title: 'Process Scheduling Report',   subject: 'Operating Systems',  class: 'CS-B', description: 'Compare FCFS, SJF, and Round Robin scheduling algorithms.',    deadline: dateOffset(10), status: 'active', kanbanStatus: 'todo',        maxMarks: 50  },
+  { title: 'ER Diagram – Library System', subject: 'DBMS',               class: 'CS-B', description: 'Design ER diagram and convert to a normalised relational schema.', deadline: dateOffset(-2), status: 'closed', kanbanStatus: 'submitted',   maxMarks: 30  },
+  { title: 'Socket Programming Lab',      subject: 'Computer Networks',  class: 'CS-A', description: 'Implement a TCP echo server and client in C.',                 deadline: dateOffset(14), status: 'active', kanbanStatus: 'in_progress', maxMarks: 50  },
+  { title: 'Sorting Algorithm Analysis',  subject: 'Data Structures',   class: 'CS-B', description: 'Analyse time and space complexity of 5 sorting algorithms.',   deadline: dateOffset(-5), status: 'closed', kanbanStatus: 'submitted',   maxMarks: 100 },
+]
+
+// Announcements covering all categories (academic, events, admin, general)
 const ANNOUNCEMENTS_DATA = [
-  { title: 'Mid-term Exam Schedule',      content: 'Mid-term exams are scheduled for 20–25 April 2026. Timetable will be shared on the notice board.',              audience: 'All',  pinned: true  },
-  { title: 'Lab Hours Extended',          content: 'Computer lab will be open until 9 PM on weekdays starting this week for project work.',                         audience: 'CS-A', pinned: false },
-  { title: 'Guest Lecture: Cloud Basics', content: 'A guest lecture on Cloud Computing fundamentals is scheduled for 18 April 2026 at 11 AM in Seminar Hall.',      audience: 'All',  pinned: false },
-  { title: 'Assignment Deadline Reminder',content: 'All pending assignments must be submitted before the mid-term exams begin. No extensions will be granted.',     audience: 'CS-B', pinned: true  },
-  { title: 'Sports Day Registration',     content: 'Students wishing to participate in Sports Day 2026 must register at the admin office by 17 April 2026.',        audience: 'All',  pinned: false },
+  { title: 'Mid-term Exam Schedule',       content: 'Mid-term exams are scheduled for 20–25 April 2026. Timetable will be shared on the notice board.',         audience: 'All',  category: 'academic', pinned: true  },
+  { title: 'Guest Lecture: Cloud Basics',  content: 'A guest lecture on Cloud Computing fundamentals is on 18 April 2026 at 11 AM in the Seminar Hall.',        audience: 'All',  category: 'events',   pinned: false },
+  { title: 'Lab Hours Extended',           content: 'Computer lab will be open until 9 PM on weekdays starting this week to support project work.',             audience: 'CS-A', category: 'academic', pinned: false },
+  { title: 'Assignment Deadline Reminder', content: 'All pending assignments must be submitted before mid-term exams begin. No extensions will be granted.',    audience: 'CS-B', category: 'admin',    pinned: true  },
+  { title: 'Sports Day Registration',      content: 'Students wishing to participate in Sports Day 2026 must register at the admin office by 17 April 2026.',   audience: 'All',  category: 'events',   pinned: false },
+  { title: 'Library Fine Waiver',          content: 'All outstanding library fines are waived for the current semester. Please return overdue books by Friday.', audience: 'All',  category: 'admin',    pinned: false },
+  { title: 'New Study Material Uploaded',  content: 'Chapter 7 slides for Data Structures and DBMS have been uploaded to the student portal.',                  audience: 'CS-A', category: 'academic', pinned: false },
+  { title: 'Annual Tech Fest Announced',   content: 'TechVista 2026 is coming! Register your teams for hackathon, quiz, and project expo by 30 April 2026.',    audience: 'All',  category: 'general',  pinned: true  },
 ]
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 async function main() {
   console.log('🔗  Connecting to MongoDB…')
   await mongoose.connect(MONGODB_URI, { bufferCommands: false })
-  console.log('✅  Connected.')
+  console.log('✅  Connected.\n')
 
   try {
     // ── Resolve teacher ──────────────────────────────────────────────────────────
     let teacherId = process.env.TEACHER_CLERK_ID
 
     if (teacherId) {
-      console.log(`\nℹ️   Using TEACHER_CLERK_ID from env: ${teacherId}`)
+      console.log(`ℹ️   Using TEACHER_CLERK_ID from env: ${teacherId}`)
       const exists = await Teacher.exists({ clerkId: teacherId })
       if (!exists) {
         console.log('⚠️   No Teacher found with that clerkId – creating a placeholder record.')
@@ -208,9 +242,15 @@ async function main() {
           clerkId: teacherId,
           name: 'Demo Teacher',
           email: 'demo@college.edu',
-          department: 'Computer Science',
-          subjects: SUBJECTS,
+          ...TEACHER_PROFILE,
         })
+      } else {
+        // Update profile fields on existing teacher
+        await Teacher.findOneAndUpdate(
+          { clerkId: teacherId },
+          { $set: TEACHER_PROFILE },
+        )
+        console.log('ℹ️   Updated teacher profile (department, subjects, bio, academicHistory).')
       }
     } else {
       const teacher = await Teacher.findOne().sort({ createdAt: 1 }).lean()
@@ -219,12 +259,19 @@ async function main() {
           '\n❌  No Teacher document found in the database.\n' +
           '    Sign in to the app once (it auto-creates your Teacher doc via /api/profile),\n' +
           '    then re-run this script.\n' +
-          '    Alternatively, pass TEACHER_CLERK_ID=<your_clerk_id> node scripts/seed.mjs'
+          '    Alternatively: TEACHER_CLERK_ID=<your_clerk_id> node scripts/seed.mjs\n'
         )
         process.exit(1)
       }
       teacherId = teacher.clerkId
-      console.log(`\nℹ️   Seeding as teacher: "${teacher.name}" (${teacherId})`)
+      console.log(`ℹ️   Seeding as teacher: "${teacher.name}" (${teacherId})`)
+
+      // Fill in profile fields if they're still at defaults
+      await Teacher.findOneAndUpdate(
+        { clerkId: teacherId },
+        { $set: TEACHER_PROFILE },
+      )
+      console.log('ℹ️   Updated teacher profile (department, subjects, bio, academicHistory).')
     }
 
     // ── Clear existing seed data for this teacher ────────────────────────────────
@@ -236,29 +283,29 @@ async function main() {
       Grade.deleteMany({ teacherId }),
       Announcement.deleteMany({ teacherId }),
     ])
+    console.log('    ✔ Cleared.')
 
     // ── Students ─────────────────────────────────────────────────────────────────
-    console.log('👨‍🎓  Inserting 10 students…')
+    console.log('\n👨‍🎓  Inserting 10 students…')
     const students = await Student.insertMany(
       STUDENTS_DATA.map(s => ({ ...s, teacherId }))
     )
     console.log(`    ✔ ${students.length} students created.`)
 
-    // ── Attendance (last 7 days for all students) ────────────────────────────────
-    console.log('📋  Inserting attendance records (last 7 days)…')
-    const statuses = ['present', 'present', 'present', 'present', 'present', 'absent', 'late']
+    // ── Attendance (last 14 days for every student) ──────────────────────────────
+    console.log('\n📋  Inserting attendance records (last 14 days)…')
+    const statusPool = ['present', 'present', 'present', 'present', 'present', 'absent', 'late']
     const attendanceDocs = []
-    for (let day = -6; day <= 0; day++) {
+    for (let day = -13; day <= 0; day++) {
       const date = dateStr(day)
       for (const student of students) {
-        const status = statuses[Math.floor(Math.random() * statuses.length)]
         attendanceDocs.push({
           teacherId,
           studentId: student._id,
           studentName: student.name,
           class: student.class,
           date,
-          status,
+          status: statusPool[Math.floor(Math.random() * statusPool.length)],
         })
       }
     }
@@ -266,14 +313,14 @@ async function main() {
     console.log(`    ✔ ${attendance.length} attendance records created.`)
 
     // ── Assignments ───────────────────────────────────────────────────────────────
-    console.log('📝  Inserting 6 assignments…')
+    console.log('\n📝  Inserting 6 assignments (all statuses & kanbanStatuses)…')
     const assignments = await Assignment.insertMany(
       ASSIGNMENTS_DATA.map(a => ({ ...a, teacherId }))
     )
     console.log(`    ✔ ${assignments.length} assignments created.`)
 
-    // ── Grades (Term 1 for each student × each subject) ──────────────────────────
-    console.log('🎓  Inserting grades…')
+    // ── Grades (Term 1 & Term 2 for each student × each subject) ─────────────────
+    console.log('\n🎓  Inserting grades (2 terms × 5 subjects × 10 students)…')
     const gradeDocs = []
     const terms = ['Term 1', 'Term 2']
     for (const student of students) {
@@ -296,26 +343,29 @@ async function main() {
     const grades = await Grade.insertMany(gradeDocs)
     console.log(`    ✔ ${grades.length} grade records created.`)
 
-    // ── Announcements ─────────────────────────────────────────────────────────────
-    console.log('📢  Inserting 5 announcements…')
+    // ── Announcements (all categories) ───────────────────────────────────────────
+    console.log('\n📢  Inserting 8 announcements (all categories)…')
     const announcements = await Announcement.insertMany(
       ANNOUNCEMENTS_DATA.map(a => ({ ...a, teacherId }))
     )
     console.log(`    ✔ ${announcements.length} announcements created.`)
 
     // ── Summary ───────────────────────────────────────────────────────────────────
-    console.log('\n🌱  Seed complete!')
-    console.log(`    Students:      ${students.length}`)
-    console.log(`    Attendance:    ${attendance.length}`)
-    console.log(`    Assignments:   ${assignments.length}`)
-    console.log(`    Grades:        ${grades.length}`)
-    console.log(`    Announcements: ${announcements.length}`)
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+    console.log('🌱  Seed complete!')
+    console.log(`    Teacher profile:  updated`)
+    console.log(`    Students:         ${students.length}`)
+    console.log(`    Attendance:       ${attendance.length} (14 days)`)
+    console.log(`    Assignments:      ${assignments.length} (todo / in_progress / submitted)`)
+    console.log(`    Grades:           ${grades.length} (Term 1 & Term 2)`)
+    console.log(`    Announcements:    ${announcements.length} (academic / events / admin / general)`)
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   } finally {
     await mongoose.disconnect()
   }
 }
 
 main().catch(err => {
-  console.error('Seed failed:', err)
+  console.error('\n❌  Seed failed:', err.message ?? err)
   process.exit(1)
 })

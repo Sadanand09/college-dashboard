@@ -25,16 +25,22 @@ const TeacherSchema = new Schema<ITeacher>(
     clerkId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true },
-    department: { type: String, default: '' },
+    department: { type: String, default: "" },
     subjects: { type: [String], default: [] },
-    phone: { type: String, default: '' },
-    bio: { type: String, default: '' },
+    phone: { type: String, default: "" },
+    bio: { type: String, default: "" },
     academicHistory: {
-      type: [{ year: String, title: String, description: String }],
+      type: [
+        {
+          year: { type: String, required: true },
+          title: { type: String, required: true },
+          description: { type: String },
+        },
+      ],
       default: [],
     },
   },
-  { timestamps: true }
-)
+  { timestamps: true },
+);
 
 export const Teacher = models.Teacher ?? model<ITeacher>('Teacher', TeacherSchema)

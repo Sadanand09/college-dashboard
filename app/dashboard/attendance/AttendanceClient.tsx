@@ -69,51 +69,80 @@ export function AttendanceClient() {
 
   // ── Fetch students for mark tab ──
   const fetchStudents = useCallback(async () => {
-    if (!selectedClass) { setStudents([]); return }
-    const res = await fetch(`/api/students?search=${encodeURIComponent(selectedClass)}&limit=100`)
-    const data = await res.json()
-    const classStudents = (data.students ?? []).filter((s: Student) => s.class === selectedClass)
-    setStudents(classStudents)
-    const init: Record<string, AttendanceStatus> = {}
-    for (const s of classStudents) init[s._id] = 'present'
-    setStatuses(init)
-  }, [selectedClass])
+    if (!selectedClass) {
+      setStudents([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/students?search=${encodeURIComponent(selectedClass)}&limit=100`,
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const classStudents = (data.students ?? []).filter(
+        (s: Student) => s.class === selectedClass,
+      );
+      setStudents(classStudents);
+      const init: Record<string, AttendanceStatus> = {};
+      for (const s of classStudents) init[s._id] = "present";
+      setStatuses(init);
+    } catch {
+      toast("Failed to load students", "error");
+      setStudents([]);
+    }
+  }, [selectedClass, toast]);
 
   useEffect(() => { fetchStudents() }, [fetchStudents])
 
   // ── Fetch history ──
   const fetchHistory = useCallback(async () => {
-    setLoadingHistory(true)
+    setLoadingHistory(true);
     try {
-      const params = new URLSearchParams({ date: historyDate })
-      if (historyClass) params.set('class', historyClass)
-      const res = await fetch(`/api/attendance?${params}`)
-      const data = await res.json()
-      setRecords(Array.isArray(data) ? data : [])
+      const params = new URLSearchParams({ date: historyDate });
+      if (historyClass) params.set("class", historyClass);
+      const res = await fetch(`/api/attendance?${params}`);
+      if (!res.ok) throw new Error(`Failed to fetch history: ${res.status}`);
+      const data = await res.json();
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast(
+        `Failed to load history: ${error instanceof Error ? error.message : "Network error"}`,
+        "error",
+      );
+      console.error("fetchHistory error:", error);
+      setRecords([]);
     } finally {
-      setLoadingHistory(false)
+      setLoadingHistory(false);
     }
-  }, [historyDate, historyClass])
+  }, [historyDate, historyClass, toast]);
 
   useEffect(() => { if (tab === 'history') fetchHistory() }, [tab, fetchHistory])
 
   // ── Fetch heatmap data (all records for the month) ──
   const fetchHeatmap = useCallback(async () => {
-    setLoadingHeatmap(true)
+    setLoadingHeatmap(true);
     try {
-      const [year, month] = heatmapMonth.split('-').map(Number)
-      const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-      const lastDay = new Date(year, month, 0).getDate()
-      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-      const params = new URLSearchParams({ startDate, endDate })
-      if (heatmapClass) params.set('class', heatmapClass)
-      const res = await fetch(`/api/attendance?${params}`)
-      const data = await res.json()
-      setHeatmapRecords(Array.isArray(data) ? data : [])
+      const [year, month] = heatmapMonth.split("-").map(Number);
+      const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      const params = new URLSearchParams({ startDate, endDate });
+      if (heatmapClass) params.set("class", heatmapClass);
+      const res = await fetch(`/api/attendance?${params}`);
+      if (!res.ok) throw new Error(`Failed to fetch heatmap: ${res.status}`);
+      const data = await res.json();
+      setHeatmapRecords(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast(
+        `Failed to load heatmap: ${error instanceof Error ? error.message : "Network error"}`,
+        "error",
+      );
+      console.error("fetchHeatmap error:", error);
+      setHeatmapRecords([]);
     } finally {
-      setLoadingHeatmap(false)
+      setLoadingHeatmap(false);
     }
-  }, [heatmapMonth, heatmapClass])
+  }, [heatmapMonth, heatmapClass, toast]);
 
   useEffect(() => { if (tab === 'heatmap') fetchHeatmap() }, [tab, fetchHeatmap])
 
@@ -122,21 +151,27 @@ export function AttendanceClient() {
     if (!selectedClass) { toast('Select a class first', 'warning'); return }
     if (students.length === 0) { toast('No students in this class', 'warning'); return }
     setSaving(true)
-    const payload = students.map((s) => ({
-      studentId: s._id,
-      studentName: s.name,
-      class: s.class,
-      date,
-      status: statuses[s._id] ?? 'present',
-    }))
-    const res = await fetch('/api/attendance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    setSaving(false)
-    if (res.ok) toast(`Attendance saved for ${payload.length} students!`, 'success')
-    else toast('Failed to save attendance', 'error')
+    try {
+      const payload = students.map((s) => ({
+        studentId: s._id,
+        studentName: s.name,
+        class: s.class,
+        date,
+        status: statuses[s._id] ?? "present",
+      }));
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok)
+        toast(`Attendance saved for ${payload.length} students!`, "success");
+      else toast("Failed to save attendance", "error");
+    } catch {
+      toast("Failed to save attendance", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const markAll = (status: AttendanceStatus) => {

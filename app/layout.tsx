@@ -15,10 +15,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider afterSignOutUrl="/sign-in">
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-        <body className="min-h-screen antialiased">
-          {children}
-        </body>
+        <head>
+          {/* Theme initialization script to prevent hydration flash */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                (function() {
+                  try {
+                    const stored = localStorage.getItem('theme');
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const isDark = stored ? stored === 'dark' : prefersDark;
+                    if (isDark) {
+                      document.documentElement.classList.add('dark');
+                    } else {
+                      document.documentElement.classList.remove('dark');
+                    }
+                  } catch (e) {
+                    // Silently fail if localStorage is not available
+                  }
+                })();
+              `,
+            }}
+          />
+        </head>
+        <body className="min-h-screen antialiased">{children}</body>
       </html>
     </ClerkProvider>
-  )
+  );
 }

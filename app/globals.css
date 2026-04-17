@@ -63,12 +63,31 @@ body {
   background: #a5b4fc;
 }
 
-/* Drawer slide-in */
+/* Drawer slide-in / slide-out */
 @keyframes drawer-slide-in {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }
 }
-.animate-slide-in { animation: drawer-slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes drawer-slide-out {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+.animate-slide-in  { animation: drawer-slide-in  0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+.animate-slide-out { animation: drawer-slide-out 0.2s  cubic-bezier(0.4, 0, 1, 1) forwards; }
+
+/* Page fade transition */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-fade-in 0.2s ease; }
+
+/* Sidebar active indicator */
+@keyframes indicator-slide {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+.sidebar-indicator { animation: indicator-slide 0.2s ease; }
 
 /* Toast animations */
 @keyframes slide-in {

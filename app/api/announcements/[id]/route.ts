@@ -23,7 +23,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
     let body
     try {
       body = await req.json()
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid JSON request body' }, { status: 400 })
     }
 

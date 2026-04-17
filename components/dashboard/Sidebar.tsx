@@ -92,7 +92,7 @@ export function Sidebar({ onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {navItems.map((item) => {
           const isActive =
             item.href === '/dashboard'
@@ -103,14 +103,22 @@ export function Sidebar({ onClose }: SidebarProps) {
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
                 isActive
                   ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'text-indigo-300 hover:bg-indigo-900 hover:text-white'
+                  : 'text-indigo-300 hover:bg-indigo-900/70 hover:text-white'
               }`}
             >
-              {item.icon}
-              {item.label}
+              {/* Sliding left indicator */}
+              {isActive && (
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-r-full sidebar-indicator" />
+              )}
+              <span className={`transition-transform duration-150 ${isActive ? 'translate-x-1' : ''}`}>
+                {item.icon}
+              </span>
+              <span className={`transition-transform duration-150 ${isActive ? 'translate-x-0.5' : ''}`}>
+                {item.label}
+              </span>
             </Link>
           )
         })}

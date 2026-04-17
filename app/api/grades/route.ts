@@ -34,17 +34,22 @@ export async function GET(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await connectDB()
-  const { searchParams } = new URL(req.url)
-  const studentId = searchParams.get('studentId')
-  const subject = searchParams.get('subject')
+  try {
+    await connectDB()
+    const { searchParams } = new URL(req.url)
+    const studentId = searchParams.get('studentId')
+    const subject = searchParams.get('subject')
 
-  const query: Record<string, unknown> = { teacherId: userId }
-  if (studentId) query.studentId = studentId
-  if (subject) query.subject = subject
+    const query: Record<string, unknown> = { teacherId: userId }
+    if (studentId) query.studentId = studentId
+    if (subject) query.subject = subject
 
-  const grades = await Grade.find(query).sort({ createdAt: -1 }).lean()
-  return NextResponse.json(grades)
+    const grades = await Grade.find(query).sort({ createdAt: -1 }).lean()
+    return NextResponse.json(grades)
+  } catch (error) {
+    console.error('GET /api/grades error:', error instanceof Error ? error.message : error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -57,7 +62,7 @@ export async function POST(req: NextRequest) {
     let body
     try {
       body = await req.json()
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 })
     }
     
