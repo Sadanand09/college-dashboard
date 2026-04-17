@@ -56,10 +56,7 @@ function sortTerms(terms: string[]) {
 }
 
 function pct(marks: number, max: number) {
-  if (max <= 0) return 0;
-  const percent = Math.round((marks / max) * 100);
-  // Clamp the percentage to 0-100 range
-  return Math.min(Math.max(percent, 0), 100);
+  return Math.round((marks / max) * 100);
 }
 
 const GRADE_POINT: Record<string, number> = {

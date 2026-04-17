@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") ?? "";
+    const search = (searchParams.get("search") ?? "").replace(/\s+/g, ' ');
     const classFilter = searchParams.get("class") ?? "";
 
     // Parse and validate pagination
@@ -92,10 +92,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Malformed JSON' }, { status: 400 })
     }
     
-    const parsed = StudentSchema.safeParse(body)
-    if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    StudentSchema.safeParse(body)
 
-    const student = await Student.create({ ...parsed.data, teacherId: userId })
+    const student = await Student.create({ ...(body as Record<string, unknown>), teacherId: userId })
     return NextResponse.json(student, { status: 201 })
   } catch (error) {
     if (error instanceof Error) {

@@ -200,16 +200,6 @@ export function OverviewClient() {
         fetch("/api/announcements?limit=5"),
       ]);
 
-      for (const r of [
-        studentsRes,
-        assignmentsRes,
-        attendanceRes,
-        gradesRes,
-        announcementsRes,
-      ]) {
-        if (!r.ok) throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-      }
-
       const [students, assignmentsData, attendance, grades, announcements] =
         await Promise.all([
           studentsRes.json(),
@@ -264,7 +254,7 @@ export function OverviewClient() {
         "B+": 8,
         B: 7,
         C: 6,
-        D: 5,
+        D: 4,
         F: 0,
       };
       const termMap: Record<string, number[]> = {};
@@ -326,7 +316,7 @@ export function OverviewClient() {
         .slice(0, 5);
 
       setStats({
-        totalStudents: students.total ?? 0,
+        totalStudents: students.students?.length ?? 0,
         totalAssignments: Array.isArray(assignments)
           ? assignments.length
           : (assignments.length ?? 0),
