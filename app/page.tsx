@@ -8,4 +8,4 @@ export default async function Home() {
   } else {
     redirect('/sign-in')
   }
-}
+};
